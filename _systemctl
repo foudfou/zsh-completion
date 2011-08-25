@@ -1,6 +1,13 @@
 #compdef systemctl
 
-# TODO: optional user in _user_at_host
+# Copyright (c) 2011 Foudil Brétel <foudil.newbie+zshsystemctl@gmail.com>
+#
+# This file is released under the GPLv3.
+#
+# inspired from /usr/share/zsh/4.3.11/functions/_yum
+#           and /etc/bash_completion.d/systemctl-bash-completion.sh
+
+# TODO: enable options after commands
 
 # Main dispatcher
 _systemctl()
@@ -11,7 +18,7 @@ _systemctl()
         {-h,--help}'[Show this help]' \
         '--version[Show package version]' \
         {-t,--type}'[List only units of a particular type]:systemdunittype:(automount device mount path service snapshot socket swap target timer)' \
-        {-p,--property}'[Show only properties by this name]:' \
+        \*{-p,--property=}'[Show only properties by this name]:unit property:' \
         {-a,--all}'[Show all units/properties, including dead/empty ones]' \
         '--failed[Show only failed units]' \
         "--full[Don't ellipsize unit names on output]" \
@@ -20,7 +27,7 @@ _systemctl()
         '--kill-mode=[How to send signal]:systemdmode:(control-group process)' \
         '--kill-who=[Who to send signal to]:systemdwho:(main control all)' \
         {-s,--signal}'[Which signal to send]:signal:_signals' \
-        {-H,--host=}'[Show information for remote host]:userathost:_user_at_host' \
+        {-H,--host=}'[Show information for remote host]:userathost:_hosts_or_user_at_host' \
         {-P,--privileged}'[Acquire privileges before execution]' \
         {-q,--quiet}'[Suppress output]' \
         '--no-block[Do not wait until operation finished]' \
@@ -36,6 +43,13 @@ _systemctl()
         {-f,--force}'[When enabling unit files, override existing symlinks When shutting down, execute action immediately]' \
         '--defaults[When disabling unit files, remove default symlinks only]' \
         '*::systemctl command:_systemctl_command'
+}
+
+_hosts_or_user_at_host()
+{
+    _alternative \
+        'users-hosts:userhost:_user_at_host' \
+        'hosts:host:_hosts'
 }
 
 (( $+functions[_systemctl_command] )) || _systemctl_command()
@@ -97,11 +111,11 @@ _systemctl()
         if (( $#cmd )); then
             curcontext="${curcontext%:*:*}:systemctl-${cmd}:"
 
-            # local update_policy
-            # zstyle -s ":completion:${curcontext}:" cache-policy update_policy
-            # if [[ -z "$update_policy" ]]; then
-            #     zstyle ":completion:${curcontext}:" cache-policy _systemctl_caching_policy
-            # fi
+            local update_policy
+            zstyle -s ":completion:${curcontext}:" cache-policy update_policy
+            if [[ -z "$update_policy" ]]; then
+                zstyle ":completion:${curcontext}:" cache-policy _systemctl_caching_policy
+            fi
 
             _call_function ret _systemctl_$cmd || _message 'no more arguments'
         else
@@ -178,14 +192,12 @@ for fun in enable disable is-active is-enabled status show ; do
 done
 
 # Completion functions for STARTABLE_UNITS
-for fun in start ; do
-    (( $+functions[_systemctl_$fun] )) || _systemctl_$fun()
-    {
-	_systemctl_inactive_units
-	compadd "$@" -- $( _filter_units_by_property CanStart yes \
-            ${_sys_inactive_units[*]} | grep -Ev '\.(device|snapshot)$' )
-    }
-done
+(( $+functions[_systemctl_start] )) || _systemctl_start()
+{
+    _systemctl_inactive_units
+    compadd "$@" -- $( _filter_units_by_property CanStart yes \
+        ${_sys_inactive_units[*]} | grep -Ev '\.(device|snapshot)$' )
+}
 
 # Completion functions for RESTARTABLE_UNITS
 for fun in restart reload-or-restart ; do
@@ -218,74 +230,69 @@ for fun in reload reload-or-try-restart force-reload ; do
 done
 
 # Completion functions for ISOLATABLE_UNITS
-for fun in isolate ; do
-    (( $+functions[_systemctl_$fun] )) || _systemctl_$fun()
-    {
-	_systemctl_all_units
-	compadd "$@" -- $( _filter_units_by_property AllowIsolate yes \
-            ${_sys_all_units[*]} )
-    }
-done
+(( $+functions[_systemctl_isolate] )) || _systemctl_isolate()
+{
+    _systemctl_all_units
+    compadd "$@" -- $( _filter_units_by_property AllowIsolate yes \
+        ${_sys_all_units[*]} )
+}
 
 # Completion functions for FAILED_UNITS
-for fun in reset-failed ; do
-    (( $+functions[_systemctl_$fun] )) || _systemctl_$fun()
-    {
-	_systemctl_failed_units
-	compadd "$@" -a -- _sys_failed_units
-    }
-done
+(( $+functions[_systemctl_reset-failed] )) || _systemctl_reset-failed()
+{
+    _systemctl_failed_units
+    compadd "$@" -a -- _sys_failed_units
+}
 
-# no completion
+# no completion for:
 #        [STANDALONE]='daemon-reexec daemon-reload default dot dump emergency exit halt kexec
 #                      list-jobs list-units monitor poweroff reboot rescue show-environment'
 #              [NAME]='snapshot load'
 
 
 # Completion functions for JOBS
-for fun in cancel ; do
-    (( $+functions[_systemctl_$fun] )) || _systemctl_$fun()
-    {
-	compadd "$@" -- $( systemctl list-jobs | cut -d' ' -f1  2>/dev/null )
-    }
-done
+(( $+functions[_systemctl_cancel] )) || _systemctl_cancel()
+{
+    compadd "$@" -- $( systemctl list-jobs | cut -d' ' -f1  2>/dev/null )
+}
 
 # Completion functions for SNAPSHOTS
-for fun in delete ; do
-    (( $+functions[_systemctl_$fun] )) || _systemctl_$fun()
-    {
-	compadd "$@" -- $( systemctl list-units --type snapshot --full --all \
-            | cut -d' ' -f1  2>/dev/null )
-    }
-done
+(( $+functions[_systemctl_delete] )) || _systemctl_delete()
+{
+    compadd "$@" -- $( systemctl list-units --type snapshot --full --all \
+        | cut -d' ' -f1  2>/dev/null )
+}
 
 # Completion functions for ENVS
-for fun in set-environment unset-environment ; do
-    (( $+functions[_systemctl_$fun] )) || _systemctl_$fun()
-    {
-	compadd "$@" -S '' -- $( systemctl show-environment \
-            | sed 's_\([^=]\+=\).*_\1_' )
-    }
-done
+(( $+functions[_systemctl_set-environment] )) || _systemctl_set-environment()
+{
+    compadd "$@" -S '' -- $( systemctl show-environment \
+        | sed 's_\([^=]\+=\).*_\1_' )
+}
+(( $+functions[_systemctl_unset-environment] )) || _systemctl_unset-environment()
+{
+    compadd "$@" -S '' -- $( systemctl show-environment \
+        | sed 's_\([^=]\+\)=.*_\1_' )
+}
 
-# _systemctl_caching_policy()
-# {
-#     local _sysunits
-#     local -a oldu
+_systemctl_caching_policy()
+{
+    local _sysunits
+    local -a oldcache
 
-#     # rebuild if cache is more than a week old
-#     oldu=( "$1"(mw+1) )
-#     (( $#oldu )) && return 0
+    # rebuild if cache is more than a day old
+    oldcache=( "$1"(mh+1) )
+    (( $#oldcache )) && return 0
 
-#     _sysunits=($(systemctl --full --all | cut -d' ' -f1))
+    _sysunits=($(systemctl --full --all | cut -d' ' -f1))
 
-#     if (( $#_sysunits )); then
-#         for unit in $_sysunits; do
-#             [[ "$unit" -nt "$1" ]] && return 0
-#         done
-#     fi
+    if (( $#_sysunits )); then
+        for unit in $_sysunits; do
+            [[ "$unit" -nt "$1" ]] && return 0
+        done
+    fi
 
-#     return 1
-# }
+    return 1
+}
 
 _systemctl "$@"
