@@ -139,35 +139,20 @@ _systemctl_all_units()
 
 _systemctl_inactive_units()
 {
-    if ( [[ ${+_sys_inactive_units} -eq 0 ]] || _cache_invalid SYS_INACTIVE_UNITS ) &&
-        ! _retrieve_cache SYS_INACTIVE_UNITS;
-    then
-        _sys_inactive_units=( $(systemctl list-units --full --all \
-            | awk '$3 == "inactive" {print $1}'  2>/dev/null) )
-        _store_cache SYS_INACTIVE_UNITS _sys_inactive_units
-    fi
+    _sys_inactive_units=( $(systemctl list-units --full --all \
+        | awk '$3 == "inactive" {print $1}'  2>/dev/null) )
 }
 
 _systemctl_active_units()
 {
-    if ( [[ ${+_sys_active_units} -eq 0 ]] || _cache_invalid SYS_ACTIVE_UNITS ) &&
-        ! _retrieve_cache SYS_ACTIVE_UNITS;
-    then
-        _sys_active_units=( $(systemctl list-units --full | cut -d' ' -f1 \
-            2>/dev/null) )
-        _store_cache SYS_ACTIVE_UNITS _sys_active_units
-    fi
+    _sys_active_units=( $(systemctl list-units --full | cut -d' ' -f1 \
+        2>/dev/null) )
 }
 
 _systemctl_failed_units()
 {
-    if ( [[ ${+_sys_failed_units} -eq 0 ]] || _cache_invalid SYS_FAILED_UNITS ) &&
-        ! _retrieve_cache SYS_FAILED_UNITS;
-    then
-        _sys_failed_units=( $(systemctl list-units --full \
-            | awk '$3 == "failed" {print $1}'  2>/dev/null) )
-        _store_cache SYS_FAILED_UNITS _sys_failed_units
-    fi
+    _sys_failed_units=( $(systemctl list-units --full \
+        | awk '$3 == "failed" {print $1}'  2>/dev/null) )
 }
 
 _filter_units_by_property () {
