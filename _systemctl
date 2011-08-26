@@ -15,32 +15,32 @@ _systemctl()
   local curcontext="$curcontext" state lstate line
 
   _arguments -s \
-    {-h,--help}'[Show this help]' \
+    {-h,--help}'[Show help]' \
     '--version[Show package version]' \
-    {-t,--type}'[List only units of a particular type]:systemdunittype:(automount device mount path service snapshot socket swap target timer)' \
-    \*{-p,--property=}'[Show only properties by this name]:unit property:' \
+    {-t,--type=}'[List only units of a particular type]:unit type:(automount device mount path service snapshot socket swap target timer)' \
+    \*{-p,--property=}'[Show only properties by specific name]:unit property:' \
     {-a,--all}'[Show all units/properties, including dead/empty ones]' \
     '--failed[Show only failed units]' \
     "--full[Don't ellipsize unit names on output]" \
     '--fail[When queueing a new job, fail if conflicting jobs are pending]' \
     '--ignore-dependencies[When queueing a new job, ignore all its dependencies]' \
-    '--kill-mode=[How to send signal]:systemdmode:(control-group process)' \
-    '--kill-who=[Who to send signal to]:systemdwho:(main control all)' \
-    {-s,--signal}'[Which signal to send]:signal:_signals' \
+    '--kill-mode=:[How to send signal]:killmode:(control-group process)' \
+    '--kill-who=:[Who to send signal to]:killwho:(main control all)' \
+    {-s,--signal=}'[Which signal to send]:signal:_signals' \
     {-H,--host=}'[Show information for remote host]:userathost:_hosts_or_user_at_host' \
     {-P,--privileged}'[Acquire privileges before execution]' \
     {-q,--quiet}'[Suppress output]' \
     '--no-block[Do not wait until operation finished]' \
     "--no-wall[Don't send wall message before halt/power-off/reboot]" \
     "--no-reload[When enabling/disabling unit files, don't reload daemon configuration]" \
-    '--no-pager[Do not pipe output into a pager.]' \
+    '--no-pager[Do not pipe output into a pager]' \
     '--no-ask-password[Do not ask for system passwords]' \
     '--order[When generating graph for dot, show only order]' \
     '--require[When generating graph for dot, show only requirement]' \
     '--system[Connect to system manager]' \
     '--user[Connect to user service manager]' \
     '--global[Enable/disable unit files globally]' \
-    {-f,--force}'[When enabling unit files, override existing symlinks When shutting down, execute action immediately]' \
+    {-f,--force}'[When enabling unit files, override existing symlinks. When shutting down, execute action immediately]' \
     '--defaults[When disabling unit files, remove default symlinks only]' \
     '*::systemctl command:_systemctl_command'
 }
@@ -48,8 +48,8 @@ _systemctl()
 _hosts_or_user_at_host()
 {
   _alternative \
-    'users-hosts:userhost:_user_at_host' \
-    'hosts:host:_hosts'
+    'users-hosts:: _user_at_host' \
+    'hosts:: _hosts'
 }
 
 (( $+functions[_systemctl_command] )) || _systemctl_command()
@@ -102,7 +102,7 @@ _hosts_or_user_at_host()
     local curcontext="$curcontext"
 
     cmd="${${_systemctl_cmds[(r)$words[1]:*]%%:*}}"
-        # Deal with any aliases
+    # Deal with any aliases
     case $cmd in
       condrestart) cmd="try-restart";;
       force-reload) cmd="reload-or-try-restart";;
@@ -229,12 +229,6 @@ done
   compadd "$@" -a -- _sys_failed_units
 }
 
-# no completion for:
-#        [STANDALONE]='daemon-reexec daemon-reload default dot dump emergency exit halt kexec
-#                      list-jobs list-units monitor poweroff reboot rescue show-environment'
-#              [NAME]='snapshot load'
-
-
 # Completion functions for JOBS
 (( $+functions[_systemctl_cancel] )) || _systemctl_cancel()
 {
@@ -259,6 +253,11 @@ done
   compadd "$@" -S '' -- $( systemctl show-environment \
     | sed 's_\([^=]\+\)=.*_\1_' )
 }
+
+# no completion for:
+#        [STANDALONE]='daemon-reexec daemon-reload default dot dump emergency exit halt kexec
+#                      list-jobs list-units monitor poweroff reboot rescue show-environment'
+#              [NAME]='snapshot load'
 
 _systemctl_caching_policy()
 {
