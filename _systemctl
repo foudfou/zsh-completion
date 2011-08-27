@@ -7,13 +7,14 @@
 # inspired from /usr/share/zsh/4.3.11/functions/_yum
 #           and /etc/bash_completion.d/systemctl-bash-completion.sh
 
-# TODO: enable options after commands
+# TODO: enable options after commands: like list-units --all --full
 
 # Main dispatcher
 _systemctl()
 {
   local curcontext="$curcontext" state lstate line
 
+  # -s for aggregated options like -aP
   _arguments -s \
     {-h,--help}'[Show help]' \
     '--version[Show package version]' \
@@ -226,20 +227,21 @@ done
 (( $+functions[_systemctl_reset-failed] )) || _systemctl_reset-failed()
 {
   _systemctl_failed_units
-  compadd "$@" -a -- _sys_failed_units
+  compadd "$@" -a -- _sys_failed_units || _message "no failed-unit found"
 }
 
 # Completion functions for JOBS
 (( $+functions[_systemctl_cancel] )) || _systemctl_cancel()
 {
-  compadd "$@" -- $( systemctl list-jobs | cut -d' ' -f1  2>/dev/null )
+  compadd "$@" -- $( systemctl list-jobs | cut -d' ' -f1  2>/dev/null ) || \
+    _message "no job found"
 }
 
 # Completion functions for SNAPSHOTS
 (( $+functions[_systemctl_delete] )) || _systemctl_delete()
 {
   compadd "$@" -- $( systemctl list-units --type snapshot --full --all \
-    | cut -d' ' -f1  2>/dev/null )
+    | cut -d' ' -f1  2>/dev/null ) || _message "no snampshot found"
 }
 
 # Completion functions for ENVS
