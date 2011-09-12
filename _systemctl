@@ -141,7 +141,7 @@ _systemctl_all_units()
 _systemctl_inactive_units()
 {
   _sys_inactive_units=( $(systemctl list-units --full --all \
-    | awk '$3 == "inactive" {print $1}'  2>/dev/null) )
+    | awk '$3 != "active" {print $1}'  2>/dev/null) )
 }
 
 _systemctl_active_units()
