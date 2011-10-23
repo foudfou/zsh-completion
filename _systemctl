@@ -25,8 +25,8 @@ _systemctl()
     "--full[Don't ellipsize unit names on output]" \
     '--fail[When queueing a new job, fail if conflicting jobs are pending]' \
     '--ignore-dependencies[When queueing a new job, ignore all its dependencies]' \
-    '--kill-mode=:[How to send signal]:killmode:(control-group process)' \
-    '--kill-who=:[Who to send signal to]:killwho:(main control all)' \
+    '--kill-mode=[How to send signal]:killmode:(control-group process)' \
+    '--kill-who=[Who to send signal to]:killwho:(main control all)' \
     {-s,--signal=}'[Which signal to send]:signal:_signals' \
     {-H,--host=}'[Show information for remote host]:userathost:_hosts_or_user_at_host' \
     {-P,--privileged}'[Acquire privileges before execution]' \
