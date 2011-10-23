@@ -257,16 +257,17 @@ done
 }
 
 # no completion for:
-#        [STANDALONE]='daemon-reexec daemon-reload default dot dump emergency exit halt kexec
-#                      list-jobs list-units monitor poweroff reboot rescue show-environment'
-#              [NAME]='snapshot load'
+#   [STANDALONE]='daemon-reexec daemon-reload default dot dump emergency exit
+#                 halt kexec list-jobs list-units monitor poweroff reboot
+#                 rescue show-environment'
+#         [NAME]='snapshot load'
 
 _systemctl_caching_policy()
 {
   local _sysunits
   local -a oldcache
 
-    # rebuild if cache is more than a day old
+  # rebuild if cache is more than a day old
   oldcache=( "$1"(mh+1) )
   (( $#oldcache )) && return 0
 
