@@ -4,10 +4,9 @@
 #
 # This file is released under the GPLv3.
 #
-# inspired from /usr/share/zsh/4.3.11/functions/_yum
-#           and /etc/bash_completion.d/systemctl-bash-completion.sh
-
-# TODO: enable options after commands: like list-units --all --full
+# inspired from _yum and systemctl-bash-completion.sh (shipped with systemctl)
+#
+# TODO: enable options after commands. Ex: systemctl list-units --all --full
 
 # Main dispatcher
 _systemctl()
