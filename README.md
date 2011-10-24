@@ -6,3 +6,5 @@ systemctl zsh completion function
 PLEASE PROVIDE PATCHES DIRECTLY TO zsh-workers@zsh.org.  
 This repository will be *removed* when officially released with the next
 version of ZSH.
+
+Check the wiki for [news](https://github.com/foudfou/zsh-completion/wiki) !
