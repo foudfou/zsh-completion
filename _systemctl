@@ -126,13 +126,18 @@ _hosts_or_user_at_host()
   fi
 }
 
+__systemctl()
+{
+    systemctl --no-legend "$@"
+}
+
 # Fills the unit lists
 _systemctl_all_units()
 {
   if ( [[ ${+_sys_all_units} -eq 0 ]] || _cache_invalid SYS_ALL_UNITS ) &&
     ! _retrieve_cache SYS_ALL_UNITS;
   then
-    _sys_all_units=( $(systemctl list-units --full --all | cut -d' ' -f1 \
+    _sys_all_units=( $(__systemctl list-units --full --all | cut -d' ' -f1 \
       2>/dev/null) )
     _store_cache SYS_ALL_UNITS _sys_all_units
   fi
@@ -140,26 +145,26 @@ _systemctl_all_units()
 
 _systemctl_inactive_units()
 {
-  _sys_inactive_units=( $(systemctl list-units --full --all \
+  _sys_inactive_units=( $(__systemctl list-units --full --all \
     | awk '$3 != "active" {print $1}'  2>/dev/null) )
 }
 
 _systemctl_active_units()
 {
-  _sys_active_units=( $(systemctl list-units --full | cut -d' ' -f1 \
+  _sys_active_units=( $(__systemctl list-units --full | cut -d' ' -f1 \
     2>/dev/null) )
 }
 
 _systemctl_failed_units()
 {
-  _sys_failed_units=( $(systemctl list-units --full --failed | cut -d' ' -f1
+  _sys_failed_units=( $(__systemctl list-units --full --failed | cut -d' ' -f1
     2>/dev/null) )
 }
 
 _filter_units_by_property () {
   local property=$1 value=$2 ; shift ; shift
   local -a units ; units=($*)
-  local -a props ; props=( $(systemctl show --property "$property" -- \
+  local -a props ; props=( $(__systemctl show --property "$property" -- \
     ${units[*]} | grep -v '^$') )
   for ((i=0; $i < ${#units[*]}; i++)); do
     if [[ "${props[i]}" = "$property=$value" ]]; then
@@ -271,7 +276,7 @@ _systemctl_caching_policy()
   oldcache=( "$1"(mh+1) )
   (( $#oldcache )) && return 0
 
-  _sysunits=($(systemctl --full --all | cut -d' ' -f1))
+  _sysunits=($(__systemctl --full --all | cut -d' ' -f1))
 
   if (( $#_sysunits )); then
     for unit in $_sysunits; do
