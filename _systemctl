@@ -174,7 +174,7 @@ for fun in enable disable is-active is-enabled status show ; do
   (( $+functions[_systemctl_$fun] )) || _systemctl_$fun()
   {
     _systemctl_all_units
-    compadd "$@" -a -- _sys_all_units
+    compadd "$@" -a - _sys_all_units
   }
 done
 
@@ -182,7 +182,7 @@ done
 (( $+functions[_systemctl_start] )) || _systemctl_start()
 {
   _systemctl_inactive_units
-  compadd "$@" -- $( _filter_units_by_property CanStart yes \
+  compadd "$@" - $( _filter_units_by_property CanStart yes \
     ${_sys_inactive_units[*]} | grep -Ev '\.(device|snapshot)$' )
 }
 
@@ -191,7 +191,7 @@ for fun in restart reload-or-restart ; do
   (( $+functions[_systemctl_$fun] )) || _systemctl_$fun()
   {
     _systemctl_all_units
-    compadd "$@" -- $( _filter_units_by_property CanStart yes \
+    compadd "$@" - $( _filter_units_by_property CanStart yes \
       ${_sys_all_units[*]} | grep -Ev '\.(device|snapshot|socket|timer)$' )
   }
 done
@@ -201,7 +201,7 @@ for fun in stop kill try-restart condrestart ; do
   (( $+functions[_systemctl_$fun] )) || _systemctl_$fun()
   {
     _systemctl_active_units
-    compadd "$@" -- $( _filter_units_by_property CanStop yes \
+    compadd "$@" - $( _filter_units_by_property CanStop yes \
       ${_sys_active_units[*]} )
   }
 done
@@ -211,7 +211,7 @@ for fun in reload reload-or-try-restart force-reload ; do
   (( $+functions[_systemctl_$fun] )) || _systemctl_$fun()
   {
     _systemctl_active_units
-    compadd "$@" -- $( _filter_units_by_property CanReload yes \
+    compadd "$@" - $( _filter_units_by_property CanReload yes \
       ${_sys_active_units[*]} )
   }
 done
@@ -220,7 +220,7 @@ done
 (( $+functions[_systemctl_isolate] )) || _systemctl_isolate()
 {
   _systemctl_all_units
-  compadd "$@" -- $( _filter_units_by_property AllowIsolate yes \
+  compadd "$@" - $( _filter_units_by_property AllowIsolate yes \
     ${_sys_all_units[*]} )
 }
 
@@ -228,32 +228,32 @@ done
 (( $+functions[_systemctl_reset-failed] )) || _systemctl_reset-failed()
 {
   _systemctl_failed_units
-  compadd "$@" -a -- _sys_failed_units || _message "no failed-unit found"
+  compadd "$@" -a - _sys_failed_units || _message "no failed-unit found"
 }
 
 # Completion functions for JOBS
 (( $+functions[_systemctl_cancel] )) || _systemctl_cancel()
 {
-  compadd "$@" -- $( systemctl list-jobs | cut -d' ' -f1  2>/dev/null ) || \
+  compadd "$@" - $( systemctl list-jobs | cut -d' ' -f1  2>/dev/null ) || \
     _message "no job found"
 }
 
 # Completion functions for SNAPSHOTS
 (( $+functions[_systemctl_delete] )) || _systemctl_delete()
 {
-  compadd "$@" -- $( systemctl list-units --type snapshot --full --all \
+  compadd "$@" - $( systemctl list-units --type snapshot --full --all \
     | cut -d' ' -f1  2>/dev/null ) || _message "no snapshot found"
 }
 
 # Completion functions for ENVS
 (( $+functions[_systemctl_set-environment] )) || _systemctl_set-environment()
 {
-  compadd "$@" -S '' -- $( systemctl show-environment \
+  compadd "$@" -S '' - $( systemctl show-environment \
     | sed 's_\([^=]\+=\).*_\1_' )
 }
 (( $+functions[_systemctl_unset-environment] )) || _systemctl_unset-environment()
 {
-  compadd "$@" -S '' -- $( systemctl show-environment \
+  compadd "$@" -S '' - $( systemctl show-environment \
     | sed 's_\([^=]\+\)=.*_\1_' )
 }
 
