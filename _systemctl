@@ -162,7 +162,7 @@ _filter_units_by_property () {
   local -a units ; units=($*)
   local -a props ; props=( $(systemctl show --property "$property" -- \
     ${units[*]} | grep -v '^$') )
-  for ((i=0; $i < ${#units[*]}; i++)); do
+  for ((i=1; $i <= ${#units[*]}; i++)); do
     if [[ "${props[i]}" = "$property=$value" ]]; then
       echo "${units[i]}"
     fi
@@ -242,7 +242,7 @@ done
 (( $+functions[_systemctl_delete] )) || _systemctl_delete()
 {
   compadd "$@" -- $( systemctl list-units --type snapshot --full --all \
-    | cut -d' ' -f1  2>/dev/null ) || _message "no snampshot found"
+    | cut -d' ' -f1  2>/dev/null ) || _message "no snapshot found"
 }
 
 # Completion functions for ENVS
