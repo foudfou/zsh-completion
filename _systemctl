@@ -62,8 +62,10 @@ _hosts_or_user_at_host()
     "stop:Stop (deactivate) one or more units"
     "reload:Reload one or more units"
     "restart:Start or restart one or more units"
+    "condrestart:Restart one or more units if active"
     "try-restart:Restart one or more units if active"
     "reload-or-restart:Reload one or more units is possible, otherwise start or restart"
+    "force-reload:Reload one or more units is possible, otherwise restart if active"
     "reload-or-try-restart:Reload one or more units is possible, otherwise restart if active"
     "isolate:Start one unit and stop all others"
     "kill:Send signal to processes of a unit"
@@ -167,9 +169,9 @@ _systemctl_failed_units()
 _filter_units_by_property () {
   local property=$1 value=$2 ; shift ; shift
   local -a units ; units=($*)
-  local -a props ; props=( $(systemctl show --property "$property" \
-    -- ${units[*]} | grep -v '^$') )
-  for ((i=0; $i < ${#units[*]}; i++)); do
+  local -a props ; props=( $(systemctl show --property "$property" -- \
+    ${units[*]} | grep -v '^$') )
+  for ((i=1; $i <= ${#units[*]}; i++)); do
     if [[ "${props[i]}" = "$property=$value" ]]; then
       echo "${units[i]}"
     fi
@@ -181,7 +183,7 @@ for fun in enable disable is-active is-enabled status show ; do
   (( $+functions[_systemctl_$fun] )) || _systemctl_$fun()
   {
     _systemctl_all_units
-    compadd "$@" -a -- _sys_all_units
+    compadd "$@" -a - _sys_all_units
   }
 done
 
@@ -189,7 +191,7 @@ done
 (( $+functions[_systemctl_start] )) || _systemctl_start()
 {
   _systemctl_inactive_units
-  compadd "$@" -- $( _filter_units_by_property CanStart yes \
+  compadd "$@" - $( _filter_units_by_property CanStart yes \
     ${_sys_inactive_units[*]} | grep -Ev '\.(device|snapshot)$' )
 }
 
@@ -198,7 +200,7 @@ for fun in restart reload-or-restart ; do
   (( $+functions[_systemctl_$fun] )) || _systemctl_$fun()
   {
     _systemctl_all_units
-    compadd "$@" -- $( _filter_units_by_property CanStart yes \
+    compadd "$@" - $( _filter_units_by_property CanStart yes \
       ${_sys_all_units[*]} | grep -Ev '\.(device|snapshot|socket|timer)$' )
   }
 done
@@ -208,7 +210,7 @@ for fun in stop kill try-restart condrestart ; do
   (( $+functions[_systemctl_$fun] )) || _systemctl_$fun()
   {
     _systemctl_active_units
-    compadd "$@" -- $( _filter_units_by_property CanStop yes \
+    compadd "$@" - $( _filter_units_by_property CanStop yes \
       ${_sys_active_units[*]} )
   }
 done
@@ -218,7 +220,7 @@ for fun in reload reload-or-try-restart force-reload ; do
   (( $+functions[_systemctl_$fun] )) || _systemctl_$fun()
   {
     _systemctl_active_units
-    compadd "$@" -- $( _filter_units_by_property CanReload yes \
+    compadd "$@" - $( _filter_units_by_property CanReload yes \
       ${_sys_active_units[*]} )
   }
 done
@@ -227,7 +229,7 @@ done
 (( $+functions[_systemctl_isolate] )) || _systemctl_isolate()
 {
   _systemctl_all_units
-  compadd "$@" -- $( _filter_units_by_property AllowIsolate yes \
+  compadd "$@" - $( _filter_units_by_property AllowIsolate yes \
     ${_sys_all_units[*]} )
 }
 
@@ -235,35 +237,37 @@ done
 (( $+functions[_systemctl_reset-failed] )) || _systemctl_reset-failed()
 {
   _systemctl_failed_units
-  compadd "$@" -a -- _sys_failed_units || _message "no failed-unit found"
+  compadd "$@" -a - _sys_failed_units || _message "no failed-unit found"
 }
 
 # Completion functions for JOBS
 (( $+functions[_systemctl_cancel] )) || _systemctl_cancel()
 {
-  compadd "$@" -- $(systemctl ${_list_opts} list-jobs \
+  compadd "$@" - $(systemctl ${_list_opts} list-jobs \
     | cut -d' ' -f1  2>/dev/null ) || _message "no job found"
 }
 
 # Completion functions for SNAPSHOTS
 (( $+functions[_systemctl_delete] )) || _systemctl_delete()
 {
-  compadd "$@" -- $(systemctl ${_list_opts} list-units --type snapshot --full \
+  compadd "$@" - $(systemctl ${_list_opts} list-units --type snapshot --full \
     --all | cut -d' ' -f1  2>/dev/null ) || _message "no snampshot found"
 }
 
 # Completion functions for ENVS
-# NOTE: when setting, we want to have '=' added to the variable
-(( $+functions[_systemctl_set-environment] )) || _systemctl_set-environment()
-{
-  compadd "$@" -S '' -- $(systemctl show-environment \
-    | sed 's_\([^=]\+=\).*_\1_' )
-}
-(( $+functions[_systemctl_unset-environment] )) || _systemctl_unset-environment()
-{
-  compadd "$@" -S '' -- $(systemctl show-environment \
-    | sed 's_\([^=]\+\)=.*_\1_' )
-}
+for fun in set-environment unset-environment ; do
+  (( $+functions[_systemctl_$fun] )) || _systemctl_$fun()
+  {
+    local fun=$0 ; fun=${fun##_systemctl_}
+    local suf
+    if [[ "${fun}" = "set-environment" ]]; then
+      suf='-S='
+    fi
+
+    compadd "$@" ${suf} - $( systemctl show-environment \
+      | sed 's_\([^=]\+\)=.*_\1_' )
+  }
+done
 
 # no completion for:
 #   [STANDALONE]='daemon-reexec daemon-reload default dot dump emergency exit
