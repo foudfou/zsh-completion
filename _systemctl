@@ -246,16 +246,19 @@ done
 }
 
 # Completion functions for ENVS
-(( $+functions[_systemctl_set-environment] )) || _systemctl_set-environment()
-{
-  compadd "$@" -S '' - $( systemctl show-environment \
-    | sed 's_\([^=]\+=\).*_\1_' )
-}
-(( $+functions[_systemctl_unset-environment] )) || _systemctl_unset-environment()
-{
-  compadd "$@" -S '' - $( systemctl show-environment \
-    | sed 's_\([^=]\+\)=.*_\1_' )
-}
+for fun in set-environment unset-environment ; do
+  (( $+functions[_systemctl_$fun] )) || _systemctl_$fun()
+  {
+    local fun=$0 ; fun=${fun##_systemctl_}
+    local suf
+    if [[ "${fun}" = "set-environment" ]]; then
+      suf='-S='
+    fi
+
+    compadd "$@" ${suf} - $( systemctl show-environment \
+      | sed 's_\([^=]\+\)=.*_\1_' )
+  }
+done
 
 # no completion for:
 #   [STANDALONE]='daemon-reexec daemon-reload default dot dump emergency exit
