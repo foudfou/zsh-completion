@@ -128,12 +128,12 @@ _hosts_or_user_at_host()
   fi
 }
 
-_check_option_nolegend()
+__check_option_nolegend()
 {
   systemctl --no-legend --version 2>&1 | grep -q 'unrecognized option'
   print -Pn '%(?..--no-legend)'
 }
-_list_opts=$(_check_option_nolegend)
+nolegend=$(__check_option_nolegend)
 
 
 # Fills the unit lists
@@ -142,7 +142,7 @@ _systemctl_all_units()
   if ( [[ ${+_sys_all_units} -eq 0 ]] || _cache_invalid SYS_ALL_UNITS ) &&
     ! _retrieve_cache SYS_ALL_UNITS;
   then
-    _sys_all_units=( $(systemctl ${_list_opts} list-units --full --all \
+    _sys_all_units=( $(systemctl ${nolegend} list-units --full --all \
       | cut -d' ' -f1 2>/dev/null) )
     _store_cache SYS_ALL_UNITS _sys_all_units
   fi
@@ -150,19 +150,19 @@ _systemctl_all_units()
 
 _systemctl_inactive_units()
 {
-  _sys_inactive_units=( $(systemctl ${_list_opts} list-units --full --all \
+  _sys_inactive_units=( $(systemctl ${nolegend} list-units --full --all \
     | awk '$3 != "active" {print $1}' 2>/dev/null) )
 }
 
 _systemctl_active_units()
 {
-  _sys_active_units=( $(systemctl ${_list_opts} list-units --full \
+  _sys_active_units=( $(systemctl ${nolegend} list-units --full \
     | cut -d' ' -f1 2>/dev/null) )
 }
 
 _systemctl_failed_units()
 {
-  _sys_failed_units=( $(systemctl ${_list_opts} list-units --full --failed \
+  _sys_failed_units=( $(systemctl ${nolegend} list-units --full --failed \
     | cut -d' ' -f1 2>/dev/null) )
 }
 
@@ -243,14 +243,14 @@ done
 # Completion functions for JOBS
 (( $+functions[_systemctl_cancel] )) || _systemctl_cancel()
 {
-  compadd "$@" - $(systemctl ${_list_opts} list-jobs \
+  compadd "$@" - $(systemctl ${nolegend} list-jobs \
     | cut -d' ' -f1  2>/dev/null ) || _message "no job found"
 }
 
 # Completion functions for SNAPSHOTS
 (( $+functions[_systemctl_delete] )) || _systemctl_delete()
 {
-  compadd "$@" - $(systemctl ${_list_opts} list-units --type snapshot --full \
+  compadd "$@" - $(systemctl ${nolegend} list-units --type snapshot --full \
     --all | cut -d' ' -f1  2>/dev/null ) || _message "no snampshot found"
 }
 
@@ -284,7 +284,7 @@ _systemctl_caching_policy()
   oldcache=( "$1"(mh+1) )
   (( $#oldcache )) && return 0
 
-  _sysunits=($(systemctl ${_list_opts} --full --all | cut -d' ' -f1))
+  _sysunits=($(systemctl ${nolegend} --full --all | cut -d' ' -f1))
 
   if (( $#_sysunits )); then
     for unit in $_sysunits; do
