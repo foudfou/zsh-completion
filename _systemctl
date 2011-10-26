@@ -264,7 +264,7 @@ for fun in set-environment unset-environment ; do
       suf='-S='
     fi
 
-    compadd "$@" ${suf} - $( systemctl show-environment \
+    compadd "$@" ${suf} - $(systemctl show-environment \
       | sed 's_\([^=]\+\)=.*_\1_' )
   }
 done
