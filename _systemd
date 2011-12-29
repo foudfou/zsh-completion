@@ -1,4 +1,4 @@
-#compdef systemctl
+#compdef systemctl systemd-loginctl
 
 # Copyright (c) 2011 Foudil Brétel <foudil.newbie+zshsystemctl@gmail.com>
 #
@@ -9,42 +9,64 @@
 # TODO: enable options after commands. Ex: systemctl list-units --all --full
 
 # Main dispatcher
-_systemctl()
+_systemd()
 {
   local curcontext="$curcontext" state lstate line
 
-  # -s for aggregated options like -aP
-  _arguments -s \
-    {-h,--help}'[Show help]' \
-    '--version[Show package version]' \
-    {-t,--type=}'[List only units of a particular type]:unit type:(automount device mount path service snapshot socket swap target timer)' \
-    \*{-p,--property=}'[Show only properties by specific name]:unit property:' \
-    {-a,--all}'[Show all units/properties, including dead/empty ones]' \
-    '--failed[Show only failed units]' \
-    "--full[Don't ellipsize unit names on output]" \
-    '--fail[When queueing a new job, fail if conflicting jobs are pending]' \
-    '--ignore-dependencies[When queueing a new job, ignore all its dependencies]' \
-    '--kill-mode=[How to send signal]:killmode:(control-group process)' \
-    '--kill-who=[Who to send signal to]:killwho:(main control all)' \
-    {-s,--signal=}'[Which signal to send]:signal:_signals' \
-    {-H,--host=}'[Show information for remote host]:userathost:_hosts_or_user_at_host' \
-    {-P,--privileged}'[Acquire privileges before execution]' \
-    {-q,--quiet}'[Suppress output]' \
-    '--no-block[Do not wait until operation finished]' \
-    "--no-wall[Don't send wall message before halt/power-off/reboot]" \
-    "--no-reload[When enabling/disabling unit files, don't reload daemon configuration]" \
-    '--no-legend[Do not print a legend, i.e. the column headers and the footer with hints]' \
-    '--no-pager[Do not pipe output into a pager]' \
-    '--no-ask-password[Do not ask for system passwords]' \
-    '--order[When generating graph for dot, show only order]' \
-    '--require[When generating graph for dot, show only requirement]' \
-    '--system[Connect to system manager]' \
-    '--user[Connect to user service manager]' \
-    '--global[Enable/disable unit files globally]' \
-    {-f,--force}'[When enabling unit files, override existing symlinks. When shutting down, execute action immediately]' \
-    '--root=[Enable unit files in the specified root directory]:path:_files' \
-    '--runtime[Enable unit files only temporarily until next reboot]' \
-    '*::systemctl command:_systemctl_command'
+  case "$service" in
+    systemctl)
+      # -s for aggregated options like -aP
+      _arguments -s \
+        {-h,--help}'[Show help]' \
+        '--version[Show package version]' \
+        {-t,--type=}'[List only units of a particular type]:unit type:(automount device mount path service snapshot socket swap target timer)' \
+        \*{-p,--property=}'[Show only properties by specific name]:unit property:' \
+        {-a,--all}'[Show all units/properties, including dead/empty ones]' \
+        '--failed[Show only failed units]' \
+        "--full[Don't ellipsize unit names on output]" \
+        '--fail[When queueing a new job, fail if conflicting jobs are pending]' \
+        '--ignore-dependencies[When queueing a new job, ignore all its dependencies]' \
+        '--kill-mode=[How to send signal]:killmode:(control-group process)' \
+        '--kill-who=[Who to send signal to]:killwho:(main control all)' \
+        {-s,--signal=}'[Which signal to send]:signal:_signals' \
+        {-H,--host=}'[Show information for remote host]:userathost:_hosts_or_user_at_host' \
+        {-P,--privileged}'[Acquire privileges before execution]' \
+        {-q,--quiet}'[Suppress output]' \
+        '--no-block[Do not wait until operation finished]' \
+        "--no-wall[Don't send wall message before halt/power-off/reboot]" \
+        "--no-reload[When enabling/disabling unit files, don't reload daemon configuration]" \
+        '--no-legend[Do not print a legend, i.e. the column headers and the footer with hints]' \
+        '--no-pager[Do not pipe output into a pager]' \
+        '--no-ask-password[Do not ask for system passwords]' \
+        '--order[When generating graph for dot, show only order]' \
+        '--require[When generating graph for dot, show only requirement]' \
+        '--system[Connect to system manager]' \
+        '--user[Connect to user service manager]' \
+        '--global[Enable/disable unit files globally]' \
+        {-f,--force}'[When enabling unit files, override existing symlinks. When shutting down, execute action immediately]' \
+        '--root=[Enable unit files in the specified root directory]:path:_files' \
+        '--runtime[Enable unit files only temporarily until next reboot]' \
+        '*::systemctl command:_systemctl_command'
+      ;;
+
+    systemd-loginctl)
+      _arguments -s \
+        {-h,--help}'[Show help]' \
+        '--version[Show package version]' \
+        \*{-p,--property=}'[Show only properties by this name]:unit property:' \
+        {-a,--all}'[Show all properties, including empty ones]' \
+        '--failed[Show only failed units]' \
+        '--kill-who=[Who to send signal to]:killwho:(main control all)' \
+        {-s,--signal=}'[Which signal to send]:signal:_signals' \
+        {-H,--host=}'[Show information for remote host]:userathost:_hosts_or_user_at_host' \
+        {-P,--privileged}'[Acquire privileges before execution]' \
+        '--no-pager[Do not pipe output into a pager]' \
+        '*::systemd-loginctl command:_systemd_loginctl_command'
+      ;;
+
+    *) _message 'eh?' ;;
+  esac
+
 }
 
 _hosts_or_user_at_host()
@@ -286,7 +308,7 @@ done
 
 (( $+functions[_systemctl_link] )) || _systemctl_link() { _files }
 
-# no completion for:
+# no systemctl completion for:
 #    [STANDALONE]='daemon-reexec daemon-reload default dot dump
 #                  emergency exit halt kexec list-jobs list-units
 #                  list-unit-files poweroff reboot rescue show-environment'
@@ -312,7 +334,100 @@ _systemctl_caching_policy()
   return 1
 }
 
-_systemctl "$@"
+
+
+_systemd_loginctl_all_sessions(){_sys_all_sessions=($(systemd-loginctl list-sessions | awk '{print $1}' 2>/dev/null) )}
+_systemd_loginctl_all_users()   {_sys_all_users=(   $(systemd-loginctl list-users    | awk '{print $2}' 2>/dev/null) )}
+_systemd_loginctl_all_seats()   {_sys_all_seats=(   $(systemd-loginctl list-seats    | awk '{print $1}' 2>/dev/null) )}
+
+# Completion functions for SESSIONS
+for fun in session-status show-session activate lock-session unlock-session terminate-session kill-session ; do
+  (( $+functions[_systemd_loginctl_$fun] )) || _systemd_loginctl_$fun()
+  {
+    _systemd_loginctl_all_sessions
+    compadd "$@" -a - _sys_all_sessions
+  }
+done
+
+# Completion functions for USERS
+for fun in user-status show-user enable-linger disable-linger terminate-user kill-user ; do
+  (( $+functions[_systemd_loginctl_$fun] )) || _systemd_loginctl_$fun()
+  {
+    _systemd_loginctl_all_users
+    compadd "$@" -a - _sys_all_users
+  }
+done
+
+# Completion functions for SEATS
+(( $+functions[_systemd_loginctl_seats] )) || _systemd_loginctl_seats()
+{
+  _systemd_loginctl_all_seats
+  compadd "$@" -a - _sys_all_seats
+}
+for fun in seat-status show-seat terminate-seat ; do
+  (( $+functions[_systemd_loginctl_$fun] )) || _systemd_loginctl_$fun()
+  { _systemd_loginctl_seats }
+done
+
+# Completion functions for ATTACH
+(( $+functions[_systemd_loginctl_attach] )) || _systemd_loginctl_attach()
+{
+  _systemd_loginctl_all_seats
+
+  _arguments -w -C -S -s \
+    ':seat:_systemd_loginctl_seats' \
+    '*:device:_files'
+}
+
+# no systemd-loginctl completion for:
+# [STANDALONE]='list-sessions list-users list-seats flush-devices'
+
+(( $+functions[_systemd_loginctl_command] )) || _systemd_loginctl_command()
+{
+  local -a _systemd_loginctl_cmds
+  _systemd_loginctl_cmds=(
+    "list-sessions:List sessions"
+    "session-status:Show session status"
+    "show-session:Show properties of one or more sessions"
+    "activate:Activate a session"
+    "lock-session:Screen lock one or more sessions"
+    "unlock-session:Screen unlock one or more sessions"
+    "terminate-session:Terminate one or more sessions"
+    "kill-session:Send signal to processes of a session"
+    "list-users:List users"
+    "user-status:Show user status"
+    "show-user:Show properties of one or more users"
+    "enable-linger:Enable linger state of one or more users"
+    "disable-linger:Disable linger state of one or more users"
+    "terminate-user:Terminate all sessions of one or more users"
+    "kill-user:Send signal to processes of a user"
+    "list-seats:List seats"
+    "seat-status:Show seat status"
+    "show-seat:Show properties of one or more seats"
+    "attach:Attach one or more devices to a seat"
+    "flush-devices:Flush all device associations"
+    "terminate-seat:Terminate all sessions on one or more seats"
+  )
+
+  if (( CURRENT == 1 )); then
+    _describe -t commands 'systemd-loginctl command' _systemd_loginctl_cmds || compadd "$@"
+  else
+    local curcontext="$curcontext"
+
+    cmd="${${_systemd_loginctl_cmds[(r)$words[1]:*]%%:*}}"
+
+    if (( $#cmd )); then
+      curcontext="${curcontext%:*:*}:systemd_loginctl-${cmd}:"
+
+      _call_function ret _systemd_loginctl_$cmd || _message 'no more arguments'
+    else
+      _message "unknown systemd-loginctl command: $words[1]"
+    fi
+    return ret
+  fi
+}
+
+_systemd "$@"
 
 # Local Variables:
 # mode: sh
