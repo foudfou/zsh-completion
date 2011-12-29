@@ -42,7 +42,8 @@ _systemctl()
     '--user[Connect to user service manager]' \
     '--global[Enable/disable unit files globally]' \
     {-f,--force}'[When enabling unit files, override existing symlinks. When shutting down, execute action immediately]' \
-    '--defaults[When disabling unit files, remove default symlinks only]' \
+    '--root=[Enable unit files in the specified root directory]:path:_files' \
+    '--runtime[Enable unit files only temporarily until next reboot]' \
     '*::systemctl command:_systemctl_command'
 }
 
@@ -73,22 +74,27 @@ _hosts_or_user_at_host()
     "status:Show runtime status of one or more units"
     "show:Show properties of one or more units/jobs or the manager"
     "reset-failed:Reset failed state for all, one, or more units"
+    "load:Load one or more units"
+    "list-unit-files:List installed unit files"
     "enable:Enable one or more unit files"
     "disable:Disable one or more unit files"
+    "reenable:Reenable one or more unit files"
+    "preset:Enable/disable one or more unit files based on preset configuration"
+    "mask:Mask one or more units"
+    "unmask:Unmask one or more units"
+    "link:Link one or more units files into the search path"
     "is-enabled:Check whether unit files are enabled"
-    "load:Load one or more units"
     "list-jobs:List jobs"
     "cancel:Cancel all, one, or more jobs"
-    "monitor:Monitor unit/job changes"
     "dump:Dump server status"
     "dot:Dump dependency graph for dot(1)"
     "snapshot:Create a snapshot"
     "delete:Remove one or more snapshots"
-    "daemon-reload:Reload systemd manager configuration"
-    "daemon-reexec:Reexecute systemd manager"
     "show-environment:Dump environment"
     "set-environment:Set one or more environment variables"
     "unset-environment:Unset one or more environment variables"
+    "daemon-reload:Reload systemd manager configuration"
+    "daemon-reexec:Reexecute systemd manager"
     "default:Enter system default mode"
     "rescue:Enter system rescue mode"
     "emergency:Enter system emergency mode"
@@ -128,12 +134,10 @@ _hosts_or_user_at_host()
   fi
 }
 
-__check_option_nolegend()
+__systemctl()
 {
-  systemctl --no-legend --version 2>&1 | grep -q 'unrecognized option'
-  print -Pn '%(?..--no-legend)'
+  systemctl --full --no-legend --no-pager "$@"
 }
-nolegend=$(__check_option_nolegend)
 
 
 # Fills the unit lists
@@ -142,29 +146,17 @@ _systemctl_all_units()
   if ( [[ ${+_sys_all_units} -eq 0 ]] || _cache_invalid SYS_ALL_UNITS ) &&
     ! _retrieve_cache SYS_ALL_UNITS;
   then
-    _sys_all_units=( $(systemctl ${nolegend} list-units --full --all \
-      | cut -d' ' -f1 2>/dev/null) )
+    _sys_all_units=( $(__systemctl list-units --all     | cut -d' ' -f1 2>/dev/null) )
     _store_cache SYS_ALL_UNITS _sys_all_units
   fi
 }
 
-_systemctl_inactive_units()
-{
-  _sys_inactive_units=( $(systemctl ${nolegend} list-units --full --all \
-    | awk '$3 != "active" {print $1}' 2>/dev/null) )
-}
-
-_systemctl_active_units()
-{
-  _sys_active_units=( $(systemctl ${nolegend} list-units --full \
-    | cut -d' ' -f1 2>/dev/null) )
-}
-
-_systemctl_failed_units()
-{
-  _sys_failed_units=( $(systemctl ${nolegend} list-units --full --failed \
-    | cut -d' ' -f1 2>/dev/null) )
-}
+_systemctl_inactive_units(){_sys_inactive_units=($(__systemctl list-units --all    | awk '$3 == "inactive" {print $1}' 2>/dev/null) )}
+_systemctl_active_units()  {_sys_active_units=(  $(__systemctl list-units          | cut -d' ' -f1 2>/dev/null) )}
+_systemctl_failed_units()  {_sys_failed_units=(  $(__systemctl list-units --failed | cut -d' ' -f1 2>/dev/null) )}
+_systemctl_enabled_units() {_sys_enabled_units=( $(__systemctl list-unit-files     | awk '$2 == "enabled" {print $1}' 2>/dev/null) )}
+_systemctl_disabled_units(){_sys_disabled_units=($(__systemctl list-unit-files     | awk '$2 == "disabled" {print $1}' 2>/dev/null) )}
+_systemctl_masked_units()  {_sys_masked_units=(  $(__systemctl list-unit-files     | awk '$2 == "masked" {print $1}' 2>/dev/null) )}
 
 _filter_units_by_property () {
   local property=$1 value=$2 ; shift ; shift
@@ -179,13 +171,36 @@ _filter_units_by_property () {
 }
 
 # Completion functions for ALL_UNITS
-for fun in enable disable is-active is-enabled status show ; do
+for fun in is-active is-enabled status show mask preset ; do
   (( $+functions[_systemctl_$fun] )) || _systemctl_$fun()
   {
     _systemctl_all_units
     compadd "$@" -a - _sys_all_units
   }
 done
+
+# Completion functions for ENABLED_UNITS
+for fun in disable reenable ; do
+  (( $+functions[_systemctl_$fun] )) || _systemctl_$fun()
+  {
+    _systemctl_enabled_units
+    compadd "$@" -a - _sys_enabled_units
+  }
+done
+
+# Completion functions for DISABLED_UNITS
+(( $+functions[_systemctl_enable] )) || _systemctl_enable()
+{
+  _systemctl_disabled_units
+  compadd "$@" -a - _sys_disabled_units
+}
+
+# Completion functions for FAILED_UNITS
+(( $+functions[_systemctl_reset-failed] )) || _systemctl_reset-failed()
+{
+  _systemctl_failed_units
+  compadd "$@" -a - _sys_failed_units || _message "no failed unit found"
+}
 
 # Completion functions for STARTABLE_UNITS
 (( $+functions[_systemctl_start] )) || _systemctl_start()
@@ -195,32 +210,12 @@ done
     ${_sys_inactive_units[*]} | grep -Ev '\.(device|snapshot)$' )
 }
 
-# Completion functions for RESTARTABLE_UNITS
-for fun in restart reload-or-restart ; do
-  (( $+functions[_systemctl_$fun] )) || _systemctl_$fun()
-  {
-    _systemctl_all_units
-    compadd "$@" - $( _filter_units_by_property CanStart yes \
-      ${_sys_all_units[*]} | grep -Ev '\.(device|snapshot|socket|timer)$' )
-  }
-done
-
 # Completion functions for STOPPABLE_UNITS
 for fun in stop kill try-restart condrestart ; do
   (( $+functions[_systemctl_$fun] )) || _systemctl_$fun()
   {
     _systemctl_active_units
     compadd "$@" - $( _filter_units_by_property CanStop yes \
-      ${_sys_active_units[*]} )
-  }
-done
-
-# Completion functions for RELOADABLE_UNITS
-for fun in reload reload-or-try-restart force-reload ; do
-  (( $+functions[_systemctl_$fun] )) || _systemctl_$fun()
-  {
-    _systemctl_active_units
-    compadd "$@" - $( _filter_units_by_property CanReload yes \
       ${_sys_active_units[*]} )
   }
 done
@@ -233,25 +228,45 @@ done
     ${_sys_all_units[*]} )
 }
 
-# Completion functions for FAILED_UNITS
-(( $+functions[_systemctl_reset-failed] )) || _systemctl_reset-failed()
+# Completion functions for RELOADABLE_UNITS
+for fun in reload reload-or-try-restart force-reload ; do
+  (( $+functions[_systemctl_$fun] )) || _systemctl_$fun()
+  {
+    _systemctl_active_units
+    compadd "$@" - $( _filter_units_by_property CanReload yes \
+      ${_sys_active_units[*]} )
+  }
+done
+
+# Completion functions for RESTARTABLE_UNITS
+for fun in restart reload-or-restart ; do
+  (( $+functions[_systemctl_$fun] )) || _systemctl_$fun()
+  {
+    _systemctl_all_units
+    compadd "$@" - $( _filter_units_by_property CanStart yes \
+      ${_sys_all_units[*]} | grep -Ev '\.(device|snapshot|socket|timer)$' )
+  }
+done
+
+# Completion functions for MASKED_UNITS
+(( $+functions[_systemctl_unmask] )) || _systemctl_unmask()
 {
-  _systemctl_failed_units
-  compadd "$@" -a - _sys_failed_units || _message "no failed-unit found"
+  _systemctl_masked_units
+  compadd "$@" -a - _sys_masked_units || _message "no masked unit found"
 }
 
 # Completion functions for JOBS
 (( $+functions[_systemctl_cancel] )) || _systemctl_cancel()
 {
-  compadd "$@" - $(systemctl ${nolegend} list-jobs \
+  compadd "$@" - $(__systemctl list-jobs \
     | cut -d' ' -f1  2>/dev/null ) || _message "no job found"
 }
 
 # Completion functions for SNAPSHOTS
 (( $+functions[_systemctl_delete] )) || _systemctl_delete()
 {
-  compadd "$@" - $(systemctl ${nolegend} list-units --type snapshot --full \
-    --all | cut -d' ' -f1  2>/dev/null ) || _message "no snampshot found"
+  compadd "$@" - $(__systemctl list-units --type snapshot --all \
+    | cut -d' ' -f1  2>/dev/null ) || _message "no snampshot found"
 }
 
 # Completion functions for ENVS
@@ -269,10 +284,12 @@ for fun in set-environment unset-environment ; do
   }
 done
 
+(( $+functions[_systemctl_link] )) || _systemctl_link() { _files }
+
 # no completion for:
-#   [STANDALONE]='daemon-reexec daemon-reload default dot dump emergency exit
-#                 halt kexec list-jobs list-units monitor poweroff reboot
-#                 rescue show-environment'
+#    [STANDALONE]='daemon-reexec daemon-reload default dot dump
+#                  emergency exit halt kexec list-jobs list-units
+#                  list-unit-files poweroff reboot rescue show-environment'
 #         [NAME]='snapshot load'
 
 _systemctl_caching_policy()
@@ -284,7 +301,7 @@ _systemctl_caching_policy()
   oldcache=( "$1"(mh+1) )
   (( $#oldcache )) && return 0
 
-  _sysunits=($(systemctl ${nolegend} --full --all | cut -d' ' -f1))
+  _sysunits=($(__systemctl --all | cut -d' ' -f1))
 
   if (( $#_sysunits )); then
     for unit in $_sysunits; do
