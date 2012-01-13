@@ -162,35 +162,55 @@ __systemctl()
 }
 
 
-# Fills the unit lists
+# Fills the unit list
 _systemctl_all_units()
 {
   if ( [[ ${+_sys_all_units} -eq 0 ]] || _cache_invalid SYS_ALL_UNITS ) &&
     ! _retrieve_cache SYS_ALL_UNITS;
   then
-    _sys_all_units=( $(__systemctl list-units --all     | cut -d' ' -f1 2>/dev/null) )
+    _sys_all_units=( $(__systemctl list-units --all | cut -d' ' -f1 2>/dev/null) )
     _store_cache SYS_ALL_UNITS _sys_all_units
   fi
 }
 
-_systemctl_inactive_units(){_sys_inactive_units=($(__systemctl list-units --all    | awk '$3 == "inactive" {print $1}' 2>/dev/null) )}
+# Fills the unit files list
+_systemctl_all_unit_files()
+{
+  if ( [[ ${+_sys_all_unit_files} -eq 0 ]] || _cache_invalid SYS_ALL_UNIT_FILES ) &&
+    ! _retrieve_cache SYS_ALL_UNIT_FILES;
+  then
+    _sys_all_unit_files=( $(__systemctl list-unit-files | cut -d' ' -f1 2>/dev/null) )
+    _store_cache SYS_ALL_UNIT_FILES _sys_all_unit_files
+  fi
+}
+
+_filter_units_by_property() {
+  local property=$1 value=$2 ; shift ; shift
+  local -a units ; units=($*)
+  local prop
+  for ((i=1; $i <= ${#units[*]}; i++)); do
+    # FIXME: "Failed to issue method call: Unknown unit" errors are ignored for
+    # now (looks like a DBUS_ERROR_UNKNOWN_OBJECT). We need to revert to
+    # calling 'systemctl show' once for all units, which is way faster
+    local prop=$(systemctl show --property "$property" -- ${units[i]} | grep -v '^$')
+    if [[ "${prop}" = "$property=$value" ]]; then
+      echo "${units[i]}"
+    fi
+  done
+}
+
+_systemctl_inactive_units(){
+  local -a units
+  _systemctl_all_unit_files
+  units=(${(@)_sys_all_unit_files:#*@*}) # remove entries containing '@'
+  units=(${(@M)units:#*.service})        # keep only services
+  _sys_inactive_units=($( _filter_units_by_property ActiveState inactive ${units[*]} ))
+}
 _systemctl_active_units()  {_sys_active_units=(  $(__systemctl list-units          | cut -d' ' -f1 2>/dev/null) )}
 _systemctl_failed_units()  {_sys_failed_units=(  $(__systemctl list-units --failed | cut -d' ' -f1 2>/dev/null) )}
 _systemctl_enabled_units() {_sys_enabled_units=( $(__systemctl list-unit-files     | awk '$2 == "enabled" {print $1}' 2>/dev/null) )}
 _systemctl_disabled_units(){_sys_disabled_units=($(__systemctl list-unit-files     | awk '$2 == "disabled" {print $1}' 2>/dev/null) )}
 _systemctl_masked_units()  {_sys_masked_units=(  $(__systemctl list-unit-files     | awk '$2 == "masked" {print $1}' 2>/dev/null) )}
-
-_filter_units_by_property () {
-  local property=$1 value=$2 ; shift ; shift
-  local -a units ; units=($*)
-  local -a props ; props=( $(systemctl show --property "$property" -- \
-    ${units[*]} | grep -v '^$') )
-  for ((i=1; $i <= ${#units[*]}; i++)); do
-    if [[ "${props[i]}" = "$property=$value" ]]; then
-      echo "${units[i]}"
-    fi
-  done
-}
 
 # Completion functions for ALL_UNITS
 for fun in is-active is-enabled status show mask preset ; do
@@ -228,8 +248,7 @@ done
 (( $+functions[_systemctl_start] )) || _systemctl_start()
 {
   _systemctl_inactive_units
-  compadd "$@" - $( _filter_units_by_property CanStart yes \
-    ${_sys_inactive_units[*]} | grep -Ev '\.(device|snapshot)$' )
+  compadd "$@" -a - _sys_inactive_units
 }
 
 # Completion functions for STOPPABLE_UNITS
