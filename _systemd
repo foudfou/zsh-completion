@@ -192,7 +192,7 @@ _filter_units_by_property() {
     # FIXME: "Failed to issue method call: Unknown unit" errors are ignored for
     # now (looks like a DBUS_ERROR_UNKNOWN_OBJECT). We need to revert to
     # calling 'systemctl show' once for all units, which is way faster
-    local prop=$(systemctl show --property "$property" -- ${units[i]} | grep -v '^$')
+    local prop=$(systemctl show --property "$property" -- ${units[i]} 2>/dev/null | grep -v '^$')
     if [[ "${prop}" = "$property=$value" ]]; then
       echo "${units[i]}"
     fi
@@ -202,8 +202,8 @@ _filter_units_by_property() {
 _systemctl_inactive_units(){
   local -a units
   _systemctl_all_unit_files
-  units=(${(@)_sys_all_unit_files:#*@*}) # remove entries containing '@'
-  units=(${(@M)units:#*.service})        # keep only services
+  units=(${(@)_sys_all_unit_files:#*@*})   # remove entries containing '@'
+  units=(${(@)units:#*.(device|snapshot)}) # remove devices and snapshots
   _sys_inactive_units=($( _filter_units_by_property ActiveState inactive ${units[*]} ))
 }
 _systemctl_active_units()  {_sys_active_units=(  $(__systemctl list-units          | cut -d' ' -f1 2>/dev/null) )}
