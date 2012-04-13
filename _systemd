@@ -20,7 +20,7 @@ _systemd()
         {-h,--help}'[Show help]' \
         '--version[Show package version]' \
         {-t,--type=}'[List only units of a particular type]:unit type:(automount device mount path service snapshot socket swap target timer)' \
-        \*{-p,--property=}'[Show only properties by specific name]:unit property:' \
+        \*{-p,--property=}'[Show only properties by specific name]:unit property:()' \
         {-a,--all}'[Show all units/properties, including dead/empty ones]' \
         '--failed[Show only failed units]' \
         "--full[Don't ellipsize unit names on output]" \
@@ -44,7 +44,7 @@ _systemd()
         '--user[Connect to user service manager]' \
         '--global[Enable/disable unit files globally]' \
         {-f,--force}'[When enabling unit files, override existing symlinks. When shutting down, execute action immediately]' \
-        '--root=[Enable unit files in the specified root directory]:path:_files' \
+        '--root=[Enable unit files in the specified root directory]:directory:_directories' \
         '--runtime[Enable unit files only temporarily until next reboot]' \
         '*::systemctl command:_systemctl_command'
       ;;
