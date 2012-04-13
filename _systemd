@@ -187,14 +187,16 @@ _systemctl_all_unit_files()
 _filter_units_by_property() {
   local property=$1 value=$2 ; shift ; shift
   local -a units ; units=($*)
-  local prop
+  local prop unit
   for ((i=1; $i <= ${#units[*]}; i++)); do
     # FIXME: "Failed to issue method call: Unknown unit" errors are ignored for
-    # now (looks like a DBUS_ERROR_UNKNOWN_OBJECT). We need to revert to
-    # calling 'systemctl show' once for all units, which is way faster
-    local prop=$(systemctl show --property "$property" -- ${units[i]} 2>/dev/null | grep -v '^$')
+    # now (related to DBUS_ERROR_UNKNOWN_OBJECT). in the future, we need to
+    # revert to calling 'systemctl show' once for all units, which is way
+    # faster
+    unit=${units[i]}
+    prop=$(systemctl show --no-pager --property="$property" ${unit} 2>/dev/null)
     if [[ "${prop}" = "$property=$value" ]]; then
-      echo "${units[i]}"
+      echo "${unit}"
     fi
   done
 }
