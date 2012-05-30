@@ -168,7 +168,7 @@ _systemctl_all_units()
   if ( [[ ${+_sys_all_units} -eq 0 ]] || _cache_invalid SYS_ALL_UNITS ) &&
     ! _retrieve_cache SYS_ALL_UNITS;
   then
-    _sys_all_units=( $(__systemctl list-units --all | cut -d' ' -f1 2>/dev/null) )
+    _sys_all_units=( $(__systemctl list-units --all | { while read a b; do echo "$a"; done; }) )
     _store_cache SYS_ALL_UNITS _sys_all_units
   fi
 }
@@ -179,7 +179,7 @@ _systemctl_all_unit_files()
   if ( [[ ${+_sys_all_unit_files} -eq 0 ]] || _cache_invalid SYS_ALL_UNIT_FILES ) &&
     ! _retrieve_cache SYS_ALL_UNIT_FILES;
   then
-    _sys_all_unit_files=( $(__systemctl list-unit-files | cut -d' ' -f1 2>/dev/null) )
+    _sys_all_unit_files=( $(__systemctl list-unit-files | { while read a b; do echo "$a"; done; }) )
     _store_cache SYS_ALL_UNIT_FILES _sys_all_unit_files
   fi
 }
@@ -201,18 +201,12 @@ _filter_units_by_property() {
   done
 }
 
-_systemctl_inactive_units(){
-  local -a units
-  _systemctl_all_unit_files
-  units=(${(@)_sys_all_unit_files:#*@*})   # remove entries containing '@'
-  units=(${(@)units:#*.(device|snapshot)}) # remove devices and snapshots
-  _sys_inactive_units=($( _filter_units_by_property ActiveState inactive ${units[*]} ))
-}
-_systemctl_active_units()  {_sys_active_units=(  $(__systemctl list-units          | cut -d' ' -f1 2>/dev/null) )}
-_systemctl_failed_units()  {_sys_failed_units=(  $(__systemctl list-units --failed | cut -d' ' -f1 2>/dev/null) )}
-_systemctl_enabled_units() {_sys_enabled_units=( $(__systemctl list-unit-files     | awk '$2 == "enabled" {print $1}' 2>/dev/null) )}
-_systemctl_disabled_units(){_sys_disabled_units=($(__systemctl list-unit-files     | awk '$2 == "disabled" {print $1}' 2>/dev/null) )}
-_systemctl_masked_units()  {_sys_masked_units=(  $(__systemctl list-unit-files     | awk '$2 == "masked" {print $1}' 2>/dev/null) )}
+_systemctl_active_units()  {_sys_active_units=(  $(__systemctl list-units          | { while read a b; do echo "$a"; done; }) )}
+_systemctl_inactive_units(){_sys_inactive_units=($(__systemctl list-units --all    | { while read a b c d; do [[ $c == "inactive" ]] && echo "$a"; done; }) )}
+_systemctl_failed_units()  {_sys_failed_units=(  $(__systemctl list-units --failed | { while read a b; do echo "$a"; done; }) )}
+_systemctl_enabled_units() {_sys_enabled_units=( $(__systemctl list-unit-files     | { while read a b; do [[ $b == "enabled" ]] && echo "$a"; done; }) )}
+_systemctl_disabled_units(){_sys_disabled_units=($(__systemctl list-unit-files     | { while read a b; do [[ $b == "disabled" ]] && echo "$a"; done; }) )}
+_systemctl_masked_units()  {_sys_masked_units=(  $(__systemctl list-unit-files     | { while read a b; do [[ $b == "masked" ]] && echo "$a"; done; }) )}
 
 # Completion functions for ALL_UNITS
 for fun in is-active is-enabled status show mask preset ; do
@@ -287,7 +281,9 @@ for fun in restart reload-or-restart ; do
   {
     _systemctl_all_units
     compadd "$@" - $( _filter_units_by_property CanStart yes \
-      ${_sys_all_units[*]} | grep -Ev '\.(device|snapshot|socket|timer)$' )
+      ${_sys_all_units[*]} | while read line; do \
+      [[ "$line" =~ \.(device|snapshot|socket|timer)$ ]] || echo "$line"; \
+      done )
   }
 done
 
@@ -323,7 +319,7 @@ for fun in set-environment unset-environment ; do
     fi
 
     compadd "$@" ${suf} - $(systemctl show-environment \
-      | sed 's_\([^=]\+\)=.*_\1_' )
+      | while read line; do echo "${line%%\=}";done )
   }
 done
 
@@ -357,9 +353,9 @@ _systemctl_caching_policy()
 
 
 
-_systemd_loginctl_all_sessions(){_sys_all_sessions=($(systemd-loginctl list-sessions | awk '{print $1}' 2>/dev/null) )}
-_systemd_loginctl_all_users()   {_sys_all_users=(   $(systemd-loginctl list-users    | awk '{print $2}' 2>/dev/null) )}
-_systemd_loginctl_all_seats()   {_sys_all_seats=(   $(systemd-loginctl list-seats    | awk '{print $1}' 2>/dev/null) )}
+_systemd_loginctl_all_sessions(){_sys_all_sessions=($(systemd-loginctl list-sessions | { while read a b; do echo "$a"; done; }) )}
+_systemd_loginctl_all_users()   {_sys_all_users=(   $(systemd-loginctl list-users    | { while read a b; do echo "$a"; done; }) )}
+_systemd_loginctl_all_seats()   {_sys_all_seats=(   $(systemd-loginctl list-seats    | { while read a b; do echo "$a"; done; }) )}
 
 # Completion functions for SESSIONS
 for fun in session-status show-session activate lock-session unlock-session terminate-session kill-session ; do
